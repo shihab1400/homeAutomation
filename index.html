@@ -1,685 +1,297 @@
 <!DOCTYPE html>
 <html lang="en">
-   <head>
-      <meta charset="UTF-8" />
-      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-      <title>Smart Home Control</title>
-      <style>
-         * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-         }
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Home Control (MQTT)</title>
+    <style>
+      /* Keep all your existing CSS */
+    </style>
+    <!-- MQTT.js (browser version) -->
+    <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  </head>
+  <body data-theme="light">
+    <div class="connection-indicator disconnected" id="connectionStatus">
+      ● Disconnected
+    </div>
 
-         :root {
-            --bg-primary: #f8fafc;
-            --bg-secondary: #ffffff;
-            --bg-tertiary: #f1f5f9;
-            --text-primary: #1e293b;
-            --text-secondary: #64748b;
-            --accent: #3b82f6;
-            --accent-hover: #2563eb;
-            --success: #10b981;
-            --danger: #ef4444;
-            --border: #e2e8f0;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-         }
+    <div class="container">
+      <header class="header fade-in">
+        <div class="logo">
+          <div class="logo-icon">🏠</div>
+          <div class="logo-text">Smart Home Control</div>
+        </div>
+        <div class="theme-toggle">
+          <button class="theme-toggle-btn active" onclick="setTheme('light')">
+            ☀️ Light
+          </button>
+          <button class="theme-toggle-btn" onclick="setTheme('dark')">
+            🌙 Dark
+          </button>
+        </div>
+      </header>
 
-         [data-theme="dark"] {
-            --bg-primary: #0f172a;
-            --bg-secondary: #1e293b;
-            --bg-tertiary: #334155;
-            --text-primary: #f8fafc;
-            --text-secondary: #cbd5e1;
-            --accent: #60a5fa;
-            --accent-hover: #3b82f6;
-            --success: #34d399;
-            --danger: #f87171;
-            --border: #475569;
-            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
-            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
-         }
-
-         body {
-            font-family: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
-            background: var(--bg-primary);
-            color: var(--text-primary);
-            transition: var(--transition);
-            min-height: 100vh;
-         }
-
-         .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 2rem;
-         }
-
-         .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 3rem;
-            padding: 1.5rem 0;
-            border-bottom: 1px solid var(--border);
-         }
-
-         .logo {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-         }
-
-         .logo-icon {
-            width: 2.5rem;
-            height: 2.5rem;
-            background: linear-gradient(135deg, var(--accent), var(--accent-hover));
-            border-radius: 0.75rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 1.25rem;
-         }
-
-         .logo-text {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-         }
-
-         .theme-toggle {
-            background: var(--bg-secondary);
-            border: 1px solid var(--border);
-            border-radius: 2rem;
-            padding: 0.5rem;
-            cursor: pointer;
-            transition: var(--transition);
-            box-shadow: var(--shadow);
-         }
-
-         .theme-toggle:hover {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow-lg);
-         }
-
-         .theme-toggle-btn {
-            background: none;
-            border: none;
-            padding: 0.5rem 1rem;
-            border-radius: 1.5rem;
-            cursor: pointer;
-            transition: var(--transition);
-            color: var(--text-secondary);
-            font-weight: 500;
-         }
-
-         .theme-toggle-btn.active {
-            background: var(--accent);
-            color: white;
-            transform: scale(1.05);
-         }
-
-         .status-bar {
-            background: var(--bg-secondary);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-         }
-
-         .status-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-         }
-
-         .status-item {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-         }
-
-         .status-icon {
-            width: 2.5rem;
-            height: 2.5rem;
-            border-radius: 0.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            color: white;
-         }
-
-         .status-icon.connected {
-            background: var(--success);
-         }
-
-         .status-icon.info {
-            background: var(--accent);
-         }
-
-         .status-text h3 {
-            font-size: 0.875rem;
-            font-weight: 600;
-            color: var(--text-secondary);
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-         }
-
-         .status-text p {
-            font-size: 1.125rem;
-            font-weight: 600;
-            color: var(--text-primary);
-         }
-
-         .controls-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
-         }
-
-         .switch-card {
-            background: var(--bg-secondary);
-            border-radius: 1.5rem;
-            padding: 2rem;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-            transition: var(--transition);
-            position: relative;
-            overflow: hidden;
-         }
-
-         .switch-card:hover {
-            transform: translateY(-2px);
-            box-shadow: var(--shadow-lg);
-         }
-
-         .switch-card::before {
-            content: "";
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--accent), var(--accent-hover));
-            opacity: 0;
-            transition: var(--transition);
-         }
-
-         .switch-card.active::before {
-            opacity: 1;
-         }
-
-         .switch-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1.5rem;
-         }
-
-         .switch-info h3 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 0.25rem;
-         }
-
-         .switch-info p {
-            color: var(--text-secondary);
-            font-size: 0.875rem;
-         }
-
-         .switch-toggle {
-            position: relative;
-            width: 3.5rem;
-            height: 2rem;
-            background: var(--bg-tertiary);
-            border-radius: 2rem;
-            cursor: pointer;
-            transition: var(--transition);
-            border: 2px solid var(--border);
-         }
-
-         .switch-toggle.active {
-            background: var(--success);
-            border-color: var(--success);
-         }
-
-         .switch-toggle::after {
-            content: "";
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 1.25rem;
-            height: 1.25rem;
-            background: white;
-            border-radius: 50%;
-            transition: var(--transition);
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-         }
-
-         .switch-toggle.active::after {
-            transform: translateX(1.5rem);
-         }
-
-         .switch-status {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.75rem 1rem;
-            background: var(--bg-tertiary);
-            border-radius: 0.75rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-         }
-
-         .status-dot {
-            width: 0.5rem;
-            height: 0.5rem;
-            border-radius: 50%;
-            background: var(--text-secondary);
-         }
-
-         .status-dot.on {
-            background: var(--success);
-            animation: pulse 2s infinite;
-         }
-
-         @keyframes pulse {
-            0%,
-            100% {
-               opacity: 1;
-            }
-            50% {
-               opacity: 0.5;
-            }
-         }
-
-         .master-controls {
-            background: var(--bg-secondary);
-            border-radius: 1.5rem;
-            padding: 2rem;
-            box-shadow: var(--shadow);
-            border: 1px solid var(--border);
-         }
-
-         .master-controls h2 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            color: var(--text-primary);
-            margin-bottom: 1.5rem;
-            text-align: center;
-         }
-
-         .master-buttons {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1rem;
-         }
-
-         .master-btn {
-            padding: 1rem 1.5rem;
-            border: none;
-            border-radius: 0.75rem;
-            font-weight: 600;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 0.5rem;
-         }
-
-         .master-btn.on {
-            background: var(--success);
-            color: white;
-         }
-
-         .master-btn.off {
-            background: var(--danger);
-            color: white;
-         }
-
-         .master-btn:hover {
-            transform: translateY(-1px);
-            box-shadow: var(--shadow);
-         }
-
-         .connection-indicator {
-            position: fixed;
-            top: 1rem;
-            right: 1rem;
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            font-weight: 500;
-            z-index: 1000;
-            transition: var(--transition);
-         }
-
-         .connection-indicator.connected {
-            background: var(--success);
-            color: white;
-         }
-
-         .connection-indicator.disconnected {
-            background: var(--danger);
-            color: white;
-         }
-
-         @media (max-width: 768px) {
-            .container {
-               padding: 1rem;
-            }
-
-            .header {
-               flex-direction: column;
-               gap: 1rem;
-               text-align: center;
-            }
-
-            .controls-grid {
-               grid-template-columns: 1fr;
-            }
-
-            .master-buttons {
-               grid-template-columns: 1fr;
-            }
-         }
-
-         .fade-in {
-            animation: fadeIn 0.5s ease-out;
-         }
-
-         @keyframes fadeIn {
-            from {
-               opacity: 0;
-               transform: translateY(20px);
-            }
-            to {
-               opacity: 1;
-               transform: translateY(0);
-            }
-         }
-      </style>
-   </head>
-   <body data-theme="light">
-      <div class="connection-indicator connected" id="connectionStatus">● Connected</div>
-
-      <div class="container">
-         <header class="header fade-in">
-            <div class="logo">
-               <div class="logo-icon">🏠</div>
-               <div class="logo-text">Smart Home Control</div>
+      <div class="status-bar fade-in">
+        <div class="status-grid">
+          <div class="status-item">
+            <div class="status-icon connected">📶</div>
+            <div class="status-text">
+              <h3>Connection</h3>
+              <p id="brokerStatus">Connecting...</p>
             </div>
-            <div class="theme-toggle">
-               <button class="theme-toggle-btn active" onclick="setTheme('light')">☀️ Light</button>
-               <button class="theme-toggle-btn" onclick="setTheme('dark')">🌙 Dark</button>
+          </div>
+          <div class="status-item">
+            <div class="status-icon info">⚡</div>
+            <div class="status-text">
+              <h3>Active Relays</h3>
+              <p id="activeCount">0 of 4</p>
             </div>
-         </header>
-
-         <div class="status-bar fade-in">
-            <div class="status-grid">
-               <div class="status-item">
-                  <div class="status-icon connected">📶</div>
-                  <div class="status-text">
-                     <h3>Connection</h3>
-                     <p>ESP32 Online</p>
-                  </div>
-               </div>
-               <div class="status-item">
-                  <div class="status-icon info">⚡</div>
-                  <div class="status-text">
-                     <h3>Active Relays</h3>
-                     <p id="activeCount">0 of 4</p>
-                  </div>
-               </div>
-               <div class="status-item">
-                  <div class="status-icon info">🕐</div>
-                  <div class="status-text">
-                     <h3>Last Update</h3>
-                     <p id="lastUpdate">Just now</p>
-                  </div>
-               </div>
+          </div>
+          <div class="status-item">
+            <div class="status-icon info">🕐</div>
+            <div class="status-text">
+              <h3>Last Update</h3>
+              <p id="lastUpdate">Just now</p>
             </div>
-         </div>
-
-         <div class="controls-grid fade-in">
-            <div class="switch-card" id="switch1">
-               <div class="switch-header">
-                  <div class="switch-info">
-                     <h3>Living Room Lights</h3>
-                     <p>Relay 1 - Pin D2</p>
-                  </div>
-                  <div class="switch-toggle" onclick="toggleSwitch(1)"></div>
-               </div>
-               <div class="switch-status">
-                  <div class="status-dot"></div>
-                  <span>OFF</span>
-               </div>
-            </div>
-
-            <div class="switch-card" id="switch2">
-               <div class="switch-header">
-                  <div class="switch-info">
-                     <h3>Bedroom Fan</h3>
-                     <p>Relay 2 - Pin D3</p>
-                  </div>
-                  <div class="switch-toggle" onclick="toggleSwitch(2)"></div>
-               </div>
-               <div class="switch-status">
-                  <div class="status-dot"></div>
-                  <span>OFF</span>
-               </div>
-            </div>
-
-            <div class="switch-card" id="switch3">
-               <div class="switch-header">
-                  <div class="switch-info">
-                     <h3>Kitchen Appliances</h3>
-                     <p>Relay 3 - Pin D4</p>
-                  </div>
-                  <div class="switch-toggle" onclick="toggleSwitch(3)"></div>
-               </div>
-               <div class="switch-status">
-                  <div class="status-dot"></div>
-                  <span>OFF</span>
-               </div>
-            </div>
-
-            <div class="switch-card" id="switch4">
-               <div class="switch-header">
-                  <div class="switch-info">
-                     <h3>Garden Lights</h3>
-                     <p>Relay 4 - Pin D5</p>
-                  </div>
-                  <div class="switch-toggle" onclick="toggleSwitch(4)"></div>
-               </div>
-               <div class="switch-status">
-                  <div class="status-dot"></div>
-                  <span>OFF</span>
-               </div>
-            </div>
-         </div>
-
-         <div class="master-controls fade-in">
-            <h2>Master Controls</h2>
-            <div class="master-buttons">
-               <button class="master-btn on" onclick="allSwitchesOn()">⚡ Turn All ON</button>
-               <button class="master-btn off" onclick="allSwitchesOff()">🔌 Turn All OFF</button>
-            </div>
-         </div>
+          </div>
+        </div>
       </div>
 
-      <script>
-         // Switch states
-         let switchStates = {
-            1: false,
-            2: false,
-            3: false,
-            4: false,
-         };
+      <div class="controls-grid fade-in">
+        <div class="switch-card" id="switch1">
+          <div class="switch-header">
+            <div class="switch-info">
+              <h3>Living Room Lights</h3>
+              <p>Relay 1</p>
+            </div>
+            <div class="switch-toggle" onclick="toggleSwitch(1)"></div>
+          </div>
+          <div class="switch-status">
+            <div class="status-dot"></div>
+            <span>OFF</span>
+          </div>
+        </div>
 
-         // ESP32 IP address - UPDATE THIS TO YOUR ESP32'S IP
-         const ESP32_IP = "192.168.1.112"; // Change this to your ESP32's IP address
+        <div class="switch-card" id="switch2">
+          <div class="switch-header">
+            <div class="switch-info">
+              <h3>Bedroom Fan</h3>
+              <p>Relay 2</p>
+            </div>
+            <div class="switch-toggle" onclick="toggleSwitch(2)"></div>
+          </div>
+          <div class="switch-status">
+            <div class="status-dot"></div>
+            <span>OFF</span>
+          </div>
+        </div>
 
-         // Theme management
-         function setTheme(theme) {
-            document.body.setAttribute("data-theme", theme);
+        <div class="switch-card" id="switch3">
+          <div class="switch-header">
+            <div class="switch-info">
+              <h3>Kitchen Appliances</h3>
+              <p>Relay 3</p>
+            </div>
+            <div class="switch-toggle" onclick="toggleSwitch(3)"></div>
+          </div>
+          <div class="switch-status">
+            <div class="status-dot"></div>
+            <span>OFF</span>
+          </div>
+        </div>
 
-            // Update toggle buttons
-            document.querySelectorAll(".theme-toggle-btn").forEach((btn) => {
-               btn.classList.remove("active");
-            });
-            event.target.classList.add("active");
+        <div class="switch-card" id="switch4">
+          <div class="switch-header">
+            <div class="switch-info">
+              <h3>Garden Lights</h3>
+              <p>Relay 4</p>
+            </div>
+            <div class="switch-toggle" onclick="toggleSwitch(4)"></div>
+          </div>
+          <div class="switch-status">
+            <div class="status-dot"></div>
+            <span>OFF</span>
+          </div>
+        </div>
+      </div>
 
-            // Store theme preference
-            sessionStorage.setItem("theme", theme);
-         }
+      <div class="master-controls fade-in">
+        <h2>Master Controls</h2>
+        <div class="master-buttons">
+          <button class="master-btn on" onclick="allSwitchesOn()">
+            ⚡ Turn All ON
+          </button>
+          <button class="master-btn off" onclick="allSwitchesOff()">
+            🔌 Turn All OFF
+          </button>
+        </div>
+      </div>
+    </div>
 
-         // Load saved theme
-         function loadTheme() {
-            const savedTheme = sessionStorage.getItem("theme") || "light";
-            setTheme(savedTheme);
-         }
+    <script>
+      // ========== HiveMQ Cloud Credentials ==========
+      const MQTT_BROKER = "wss://1494998b45794f319ee0dae0290dab09.s1.eu.hivemq.cloud:8884/mqtt"; // Example: wss://xxxxxx.s1.eu.hivemq.cloud:8884/mqtt
+      const MQTT_USER = "smartMultiPlug";
+      const MQTT_PASS = "smartMultiPlug1221";
 
-         // Toggle individual switch
-         async function toggleSwitch(switchNumber) {
-            const currentState = switchStates[switchNumber];
-            const newState = !currentState;
+      const controlTopics = {
+        1: "home/relay1",
+        2: "home/relay2",
+        3: "home/relay3",
+        4: "home/relay4",
+      };
+      const statusTopic = "home/status";
 
-            try {
-               // Send command to ESP32
-               const response = await fetch(
-                  `http://${ESP32_IP}/switch${switchNumber}?state=${newState ? "on" : "off"}`,
-                  {
-                     method: "GET",
-                     timeout: 5000,
-                  }
-               );
+      // Switch states
+      let switchStates = { 1: false, 2: false, 3: false, 4: false };
 
-               if (response.ok) {
-                  switchStates[switchNumber] = newState;
-                  updateSwitchUI(switchNumber, newState);
-                  updateActiveCount();
-                  updateLastUpdateTime();
-               } else {
-                  throw new Error("Failed to communicate with ESP32");
-               }
-            } catch (error) {
-               console.error("Error:", error);
-               showConnectionError();
-            }
-         }
+      // Connect to MQTT broker
+      const options = {
+        username: MQTT_USER,
+        password: MQTT_PASS,
+        clean: true,
+        reconnectPeriod: 2000,
+      };
 
-         // Update switch UI
-         function updateSwitchUI(switchNumber, isOn) {
-            const switchCard = document.getElementById(`switch${switchNumber}`);
-            const toggle = switchCard.querySelector(".switch-toggle");
-            const statusDot = switchCard.querySelector(".status-dot");
-            const statusText = switchCard.querySelector(".switch-status span");
+      const client = mqtt.connect(MQTT_BROKER, options);
 
-            if (isOn) {
-               toggle.classList.add("active");
-               statusDot.classList.add("on");
-               statusText.textContent = "ON";
-               switchCard.classList.add("active");
-            } else {
-               toggle.classList.remove("active");
-               statusDot.classList.remove("on");
-               statusText.textContent = "OFF";
-               switchCard.classList.remove("active");
-            }
-         }
+      client.on("connect", () => {
+        console.log("Connected to HiveMQ Cloud");
+        document.getElementById("connectionStatus").className =
+          "connection-indicator connected";
+        document.getElementById("connectionStatus").textContent =
+          "● Connected";
+        document.getElementById("brokerStatus").textContent = "Online";
 
-         // Master controls
-         async function allSwitchesOn() {
-            for (let i = 1; i <= 4; i++) {
-               if (!switchStates[i]) {
-                  await toggleSwitch(i);
-                  await new Promise((resolve) => setTimeout(resolve, 100)); // Small delay between switches
-               }
-            }
-         }
+        client.subscribe(statusTopic, (err) => {
+          if (!err) {
+            console.log("Subscribed to status topic");
+          }
+        });
+      });
 
-         async function allSwitchesOff() {
-            for (let i = 1; i <= 4; i++) {
-               if (switchStates[i]) {
-                  await toggleSwitch(i);
-                  await new Promise((resolve) => setTimeout(resolve, 100)); // Small delay between switches
-               }
-            }
-         }
+      client.on("error", (err) => {
+        console.error("MQTT Error:", err);
+      });
 
-         // Update active count
-         function updateActiveCount() {
-            const activeCount = Object.values(switchStates).filter((state) => state).length;
-            document.getElementById("activeCount").textContent = `${activeCount} of 4`;
-         }
+      client.on("reconnect", () => {
+        console.log("Reconnecting...");
+        document.getElementById("connectionStatus").className =
+          "connection-indicator disconnected";
+        document.getElementById("connectionStatus").textContent =
+          "● Reconnecting...";
+      });
 
-         // Update last update time
-         function updateLastUpdateTime() {
-            const now = new Date();
-            const timeString = now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-            document.getElementById("lastUpdate").textContent = timeString;
-         }
+      client.on("message", (topic, message) => {
+        console.log(`Message from ${topic}: ${message.toString()}`);
 
-         // Connection status
-         function showConnectionError() {
-            const indicator = document.getElementById("connectionStatus");
-            indicator.textContent = "● Connection Error";
-            indicator.className = "connection-indicator disconnected";
+        if (topic === statusTopic) {
+          // ESP32 sends status updates
+          const statusMsg = message.toString();
+          // Example: "Living Room Lights is ON"
+          if (statusMsg.includes("Living Room")) {
+            updateSwitchUI(1, statusMsg.includes("ON"));
+          } else if (statusMsg.includes("Bedroom Fan")) {
+            updateSwitchUI(2, statusMsg.includes("ON"));
+          } else if (statusMsg.includes("Kitchen")) {
+            updateSwitchUI(3, statusMsg.includes("ON"));
+          } else if (statusMsg.includes("Garden")) {
+            updateSwitchUI(4, statusMsg.includes("ON"));
+          }
+          updateActiveCount();
+          updateLastUpdateTime();
+        }
+      });
 
-            setTimeout(() => {
-               indicator.textContent = "● Connected";
-               indicator.className = "connection-indicator connected";
-            }, 3000);
-         }
+      // Toggle individual switch
+      function toggleSwitch(switchNumber) {
+        const newState = !switchStates[switchNumber];
+        const payload = newState ? "ON" : "OFF";
+        client.publish(controlTopics[switchNumber], payload);
+        // Optimistic update (UI changes immediately)
+        updateSwitchUI(switchNumber, newState);
+        updateActiveCount();
+        updateLastUpdateTime();
+      }
 
-         // Check ESP32 status periodically
-         async function checkStatus() {
-            try {
-               const response = await fetch(`http://${ESP32_IP}/status`, {
-                  method: "GET",
-                  timeout: 3000,
-               });
+      // Update switch UI
+      function updateSwitchUI(switchNumber, isOn) {
+        switchStates[switchNumber] = isOn;
+        const switchCard = document.getElementById(`switch${switchNumber}`);
+        const toggle = switchCard.querySelector(".switch-toggle");
+        const statusDot = switchCard.querySelector(".status-dot");
+        const statusText = switchCard.querySelector(".switch-status span");
 
-               if (response.ok) {
-                  const data = await response.json();
-                  // Update switch states from ESP32 response
-                  for (let i = 1; i <= 4; i++) {
-                     if (data[`switch${i}`] !== undefined) {
-                        switchStates[i] = data[`switch${i}`];
-                        updateSwitchUI(i, switchStates[i]);
-                     }
-                  }
-                  updateActiveCount();
-               }
-            } catch (error) {
-               console.log("Status check failed:", error);
-            }
-         }
+        if (isOn) {
+          toggle.classList.add("active");
+          statusDot.classList.add("on");
+          statusText.textContent = "ON";
+          switchCard.classList.add("active");
+        } else {
+          toggle.classList.remove("active");
+          statusDot.classList.remove("on");
+          statusText.textContent = "OFF";
+          switchCard.classList.remove("active");
+        }
+      }
 
-         // Initialize
-         document.addEventListener("DOMContentLoaded", function () {
-            loadTheme();
-            updateActiveCount();
-            updateLastUpdateTime();
+      // Master controls
+      function allSwitchesOn() {
+        for (let i = 1; i <= 4; i++) {
+          client.publish(controlTopics[i], "ON");
+          updateSwitchUI(i, true);
+        }
+        updateActiveCount();
+        updateLastUpdateTime();
+      }
 
-            // Check status every 10 seconds
-            setInterval(checkStatus, 10000);
+      function allSwitchesOff() {
+        for (let i = 1; i <= 4; i++) {
+          client.publish(controlTopics[i], "OFF");
+          updateSwitchUI(i, false);
+        }
+        updateActiveCount();
+        updateLastUpdateTime();
+      }
 
-            // Add fade-in animation to elements
-            document.querySelectorAll(".fade-in").forEach((el, index) => {
-               el.style.animationDelay = `${index * 0.1}s`;
-            });
-         });
-      </script>
-   </body>
+      // Update active count
+      function updateActiveCount() {
+        const activeCount = Object.values(switchStates).filter((s) => s).length;
+        document.getElementById(
+          "activeCount"
+        ).textContent = `${activeCount} of 4`;
+      }
+
+      // Update last update time
+      function updateLastUpdateTime() {
+        const now = new Date();
+        const timeString = now.toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+        document.getElementById("lastUpdate").textContent = timeString;
+      }
+
+      // Theme management
+      function setTheme(theme) {
+        document.body.setAttribute("data-theme", theme);
+        document
+          .querySelectorAll(".theme-toggle-btn")
+          .forEach((btn) => btn.classList.remove("active"));
+        event.target.classList.add("active");
+        sessionStorage.setItem("theme", theme);
+      }
+
+      function loadTheme() {
+        const savedTheme = sessionStorage.getItem("theme") || "light";
+        setTheme(savedTheme);
+      }
+
+      document.addEventListener("DOMContentLoaded", function () {
+        loadTheme();
+        updateActiveCount();
+        updateLastUpdateTime();
+      });
+    </script>
+  </body>
 </html>
